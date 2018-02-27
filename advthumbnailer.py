@@ -156,15 +156,28 @@ class Thumbnailer(object):
 
 
 def find_image_urls_in_file(file_path, settings):
+    def _get_tag_with_style(tag):
+        return tag.has_attr('style')
+
     with open(file_path) as file_obj:
         soup = BeautifulSoup(file_obj, "html.parser")
 
+        bg_imgs = soup.find_all(_get_tag_with_style)
         imgs = soup.find_all("img")
         sources = soup.find_all("source")
 
         urls = [img.get("src") for img in imgs if img.get("src") is not None]
         urls += [img.get("srcset") for img in imgs if img.get("srcset") is not None]
         urls += [source.get("srcset") for source in sources if source.get("srcset") is not None]
+
+        background_color = re.compile(r"background-image:\s*url\((?P<url>[^)]*)\)")
+        for tag in bg_imgs:
+            style = tag.get("style")
+            url_match = background_color.match(style)
+            if url_match:
+                url = url_match.group('url')
+                urls.append(url)
+
 
         if settings.get("ADVTHUMB_SEARCH_IMAGES_IN_ANCHORS", False):
             import urlparse, mimetypes
