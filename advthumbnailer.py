@@ -198,6 +198,26 @@ def add_jinja2_ext(pelican):
     pelican.settings['JINJA_FILTERS']['thumbnail'] = original_to_thumbnail_url
 
 
+def skip_directory(pelican, dirpath):
+    """ Do not look for thumbnails in PAGE_EXCLUDES directories. Saves a lot of
+    time by skipping mainly documentation directories.
+    """
+    skip = False
+    base_dir = pelican.settings['OUTPUT_PATH']
+    # We still need to look into articles for thumbnails.
+    # Articles are by default included in the PAGE_EXCLUDES list below.
+    for directory in pelican.settings['ARTICLE_PATHS']:
+        if dirpath == "{}/{}".format(base_dir, directory):
+            return skip
+
+    for directory in pelican.settings['PAGE_EXCLUDES']:
+        if "{}/{}".format(base_dir, directory) == dirpath:
+            logger.debug("Skipping {} [PAGE_EXCLUDES]".format(dirpath))
+            skip = True
+            break
+    return skip
+
+
 def find_missing_images(pelican):
     global enabled
     if not enabled:
@@ -212,6 +232,9 @@ def find_missing_images(pelican):
     thumbnailer = Thumbnailer()
 
     for dirpath, _, filenames in os.walk(base_dir):
+        if skip_directory(pelican, dirpath):
+            continue
+
         for filename in filenames:
             _, ext = os.path.splitext(filename)
 
